@@ -34,16 +34,10 @@ class CreditCard {
         this.balance = balance;
     }
 
-    private String generateNewCardNumber(DataSource dataSource) {
-        Random random = new Random(Instant.now().toEpochMilli());
-        long leftLimit = 100_000_000L;
-        long rightLimit = 1_000_000_000L;
-        long accountNumber = leftLimit + (long) (random.nextDouble() * (rightLimit - leftLimit));
-        long base = 4_000_000_000_000_000L + accountNumber * 10;
-        String work = Long.toString(base);
+    private int calculateChecksum(String number) {
         int checkSum = 0;
         for (int i = 0; i < 15; i++) {
-            int digit = Character.getNumericValue(work.charAt(i));
+            int digit = Character.getNumericValue(number.charAt(i));
             if (i % 2 == 0) {
                 digit *= 2;
                 if (digit > 9) {
@@ -52,7 +46,16 @@ class CreditCard {
             }
             checkSum += digit;
         }
-        int lastDigit = 10 - (checkSum % 10);
+        return checkSum;
+    }
+
+    private String generateNewCardNumber(DataSource dataSource) {
+        Random random = new Random(Instant.now().toEpochMilli());
+        long leftLimit = 100_000_000L;
+        long rightLimit = 1_000_000_000L;
+        long accountNumber = leftLimit + (long) (random.nextDouble() * (rightLimit - leftLimit));
+        long base = 4_000_000_000_000_000L + accountNumber * 10;
+        int lastDigit = 10 - (calculateChecksum(Long.toString(base)) % 10);
         String temp = Long.toString(base + lastDigit);
         if (getCardByNumber(temp, dataSource) != null) {
             System.out.println("There is a card with number " + temp + " already in the database.");
@@ -112,6 +115,24 @@ class CreditCard {
     }
 
     public void addIncome(int amount, SQLiteDataSource dataSource) {
+        String sql = "UPDATE card SET balance=balance+? WHERE number=?;";
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement preparedStatement = conn.prepareStatement(sql)) {
+            preparedStatement.setInt(1, amount);
+            preparedStatement.setString(2, this.number);
+            preparedStatement.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        int newBalance = this.balance + amount;
+        CreditCard check = getCardByNumber(this.number, dataSource);
+        if (check.getBalance() == newBalance) {
+            this.setBalance(newBalance);
+        }
+    }
+
+    private void setBalance(int newBalance) {
+        this.balance = newBalance;
     }
 
     public CreditCard announceTransfer(String number, SQLiteDataSource dataSource) {
@@ -120,7 +141,7 @@ class CreditCard {
             return null;
         }
         if (!isValidCardNumber(number)) {
-            System.out.println("Probably you made a mistake in card number. Please try again!");
+            System.out.println("Probably you made mistake in card number. Please try again!");
             return null;
         }
         CreditCard other = getCardByNumber(number, dataSource);
@@ -132,10 +153,21 @@ class CreditCard {
     }
 
     public void closeAccount(SQLiteDataSource dataSource) {
+        String sql = "DELETE FROM card WHERE id = ?";
+
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement preparedStatement = conn.prepareStatement(sql)) {
+
+            preparedStatement.setInt(1, this.id);
+            preparedStatement.executeUpdate();
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
     }
 
     private boolean isValidCardNumber(String number) {
-        return true;
+        return (calculateChecksum(number) + Character.getNumericValue(number.charAt(15))) % 10 == 0;
     }
 }
 
@@ -160,7 +192,6 @@ public class Main {
         try (Connection con = dataSource.getConnection();
              Statement stmt = con.createStatement()) {
             stmt.execute(createTable);
-            System.out.println("Table created.");
         } catch (SQLException e) {
             e.printStackTrace();
         }
@@ -192,11 +223,16 @@ public class Main {
                 case "3":
                     System.out.println("Transfer\nEnter card number:");
                     String number = scanner.next().trim();
+                    if (number.length() != 16) {
+                        System.out.println("Such a card does not exist.");
+                        break;
+                    }
                     CreditCard other = currentCard.announceTransfer(number, dataSource);
                     if (other != null) {
                         System.out.println("Enter how much money you want to transfer:");
                         int amount = scanner.nextInt();
                         if (currentCard.getBalance() >= amount) {
+                            currentCard.addIncome(-amount, dataSource);
                             other.addIncome(amount, dataSource);
                             System.out.println("Success!");
                         } else {
