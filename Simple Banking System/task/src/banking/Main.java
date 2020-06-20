@@ -110,6 +110,33 @@ class CreditCard {
         int rightLimit = 10_000;
         return Integer.toString(leftLimit + (int) (random.nextDouble() * (rightLimit - leftLimit)));
     }
+
+    public void addIncome(int amount, SQLiteDataSource dataSource) {
+    }
+
+    public CreditCard announceTransfer(String number, SQLiteDataSource dataSource) {
+        if (this.number.equals(number)) {
+            System.out.println("You can't transfer money to the same account!");
+            return null;
+        }
+        if (!isValidCardNumber(number)) {
+            System.out.println("Probably you made a mistake in card number. Please try again!");
+            return null;
+        }
+        CreditCard other = getCardByNumber(number, dataSource);
+        if (other == null) {
+            System.out.println("Such a card does not exist.");
+            return null;
+        }
+        return other;
+    }
+
+    public void closeAccount(SQLiteDataSource dataSource) {
+    }
+
+    private boolean isValidCardNumber(String number) {
+        return true;
+    }
 }
 
 public class Main {
@@ -139,7 +166,8 @@ public class Main {
         }
 
         while (true) {
-            String menu = isLoggedIn() ? "\n1. Balance\n2. Log out\n0. Exit" :
+            String menu = isLoggedIn() ? "\n1. Balance\n2. Add income\n3. Do transfer\n4. Close account\n" +
+                    "5. Log out\n0. Exit" :
             "\n1. Create an account\n2. Log into account\n0. Exit";
 
             System.out.println(menu);
@@ -153,10 +181,35 @@ public class Main {
                     break;
                 case "2":
                     if (isLoggedIn()) {
-                        logout();
+                        System.out.println("Enter income:");
+                        int amount = scanner.nextInt();
+                        currentCard.addIncome(amount, dataSource);
+                        System.out.println("Income was added!");
                     } else {
                         login(scanner, dataSource);
                     }
+                    break;
+                case "3":
+                    System.out.println("Transfer\nEnter card number:");
+                    String number = scanner.next().trim();
+                    CreditCard other = currentCard.announceTransfer(number, dataSource);
+                    if (other != null) {
+                        System.out.println("Enter how much money you want to transfer:");
+                        int amount = scanner.nextInt();
+                        if (currentCard.getBalance() >= amount) {
+                            other.addIncome(amount, dataSource);
+                            System.out.println("Success!");
+                        } else {
+                            System.out.println("Not enough money!");
+                        }
+                    }
+                    break;
+                case "4":
+                    currentCard.closeAccount(dataSource);
+                    System.out.println("The account has been closed!");
+                    break;
+                case "5":
+                    logout();
                     break;
                 case "0":
                     System.out.println("\nBye!");
