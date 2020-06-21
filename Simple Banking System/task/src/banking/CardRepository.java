@@ -41,6 +41,7 @@ public class CardRepository {
             preparedStatement2.executeUpdate();
             try {
                 con.commit();
+                sentMoney = amount;
             } catch (SQLException e1) {
                 con.rollback();
                 e1.printStackTrace();
@@ -86,7 +87,7 @@ public class CardRepository {
     }
 
     public int updateBalance(int id, int newBalance) {
-        String sql = "UPDATE card SET balance=balance+? WHERE id=?;";
+        String sql = "UPDATE card SET balance=? WHERE id=?;";
         try (Connection conn = dataSource.getConnection();
              PreparedStatement preparedStatement = conn.prepareStatement(sql)) {
             preparedStatement.setInt(1, newBalance);

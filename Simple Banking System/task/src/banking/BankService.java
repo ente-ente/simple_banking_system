@@ -8,9 +8,9 @@ public class BankService {
     private CardRepository cardRepository;
     private CardRules cardRules;
 
-    static Card currentCard = null;
+    private Card currentCard = null;
 
-    static protected boolean isUserLoggedIn() {
+    public boolean isUserLoggedIn() {
         return currentCard != null;
     }
 
@@ -18,7 +18,6 @@ public class BankService {
             "5. Log out\n0. Exit";
 
     private static final String MENU_LOGGED_OUT = "\n1. Create an account\n2. Log into account\n0. Exit";
-
 
     public BankService(Scanner scanner, CardRepository cardRepository) {
         this.scanner = scanner;
@@ -36,7 +35,7 @@ public class BankService {
         }
     }
 
-    public Card logIn(){
+    public void logIn(){
         System.out.println("\nEnter your card number:");
         String cardNumber = scanner.next().trim();
         System.out.println("Enter your PIN:");
@@ -45,14 +44,12 @@ public class BankService {
             Card card = cardRepository.getCardByNumber(cardNumber);
             if (card != null && card.getPin().equals(pin)) {
                 System.out.println("\nYou have successfully logged in!");
-                return card;
+                this.currentCard = card;
             } else {
                 System.out.println("\nWrong card number or PIN!");
-                return null;
             }
         } catch (NumberFormatException e) {
             System.out.println("\nInvalid input.");
-            return null;
         }
     }
 
@@ -66,8 +63,8 @@ public class BankService {
         int newBalance = currentCard.getBalance() + amount;
         if (cardRepository.updateBalance(currentCard.getId(), newBalance) > -1) {
             currentCard.setBalance(newBalance);
+            System.out.println("Income was added!");
         }
-        System.out.println("Income was added!");
     }
 
     public void doTransfer() {
@@ -98,6 +95,7 @@ public class BankService {
         }
         int result = cardRepository.transferAmount(currentCard, other, amount);
         if (result == amount) {
+            currentCard.setBalance(currentCard.getBalance() - amount);
             System.out.println("Success!");
         } else {
             System.out.println(result);
