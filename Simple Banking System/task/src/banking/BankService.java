@@ -1,25 +1,35 @@
 package banking;
 
-import org.sqlite.SQLiteDataSource;
-
 import java.util.Scanner;
 
-public class Menu {
+public class BankService {
 
     private Scanner scanner;
-    private CRUDRepository crudRepository;
-    private NumberDaemon numberDaemon;
+    private CardRepository cardRepository;
+    private CardRules cardRules;
 
-    public Menu(Scanner scanner, CRUDRepository crudRepository) {
+    static Card currentCard = null;
+
+    static protected boolean isUserLoggedIn() {
+        return currentCard != null;
+    }
+
+    private static final String MENU_LOGGED_IN = "\n1. Balance\n2. Add income\n3. Do transfer\n4. Close account\n" +
+            "5. Log out\n0. Exit";
+
+    private static final String MENU_LOGGED_OUT = "\n1. Create an account\n2. Log into account\n0. Exit";
+
+
+    public BankService(Scanner scanner, CardRepository cardRepository) {
         this.scanner = scanner;
-        this.crudRepository = crudRepository;
-        this.numberDaemon = new NumberDaemon();
+        this.cardRepository = cardRepository;
+        this.cardRules = new CardRules();
     }
 
     public void createAccount(){
-        String number = numberDaemon.generateCreditCardNumber();
-        String pin = numberDaemon.generatePin();
-        if(crudRepository.createAccount(number, pin) != null) {
+        String number = cardRules.generateCreditCardNumber();
+        String pin = cardRules.generatePin();
+        if(cardRepository.createAccount(number, pin) != null) {
             System.out.printf("\nYour card number has been created\nYour card number:\n%s\nYour card PIN:\n%s" +
                             "\n",
                     number, pin);
@@ -32,7 +42,7 @@ public class Menu {
         System.out.println("Enter your PIN:");
         String pin = scanner.next().trim();
         try {
-            Card card = crudRepository.getCardByNumber(cardNumber);
+            Card card = cardRepository.getCardByNumber(cardNumber);
             if (card != null && card.getPin().equals(pin)) {
                 System.out.println("\nYou have successfully logged in!");
                 return card;
@@ -46,47 +56,47 @@ public class Menu {
         }
     }
 
-    public void showBalance(Card card) {
-        System.out.println("Balance: " + card.getBalance());
+    public void showBalance() {
+        System.out.println("Balance: " + currentCard.getBalance());
     }
 
-    public void addIncome(Card card) {
+    public void addIncome() {
         System.out.println("Enter income:");
         int amount = scanner.nextInt();
-        int newBalance = card.getBalance() + amount;
-        if (crudRepository.updateBalance(card.getId(), newBalance) > -1) {
-            card.setBalance(newBalance);
+        int newBalance = currentCard.getBalance() + amount;
+        if (cardRepository.updateBalance(currentCard.getId(), newBalance) > -1) {
+            currentCard.setBalance(newBalance);
         }
         System.out.println("Income was added!");
     }
 
-    public void doTransfer(Card card) {
+    public void doTransfer() {
         System.out.println("Transfer\nEnter card number:");
         String number = scanner.next().trim();
         if (number.length() < 16) {
             System.out.println("Such a card doesn't exist.");
             return;
         }
-        if (card.getNumber().equals(number)) {
+        if (currentCard.getNumber().equals(number)) {
             System.out.println("You can't transfer money to the same account!");
             return;
         }
-        if (!numberDaemon.isLuhnValid(number)) {
+        if (!cardRules.isLuhnValid(number)) {
             System.out.println("Probably you made mistake in card number. Please try again!");
             return;
         }
-        Card other = crudRepository.getCardByNumber(number);
+        Card other = cardRepository.getCardByNumber(number);
         if (other == null) {
             System.out.println("Such a card does not exist.");
             return;
         }
         System.out.println("Enter how much money you want to transfer:\n");
         int amount = scanner.nextInt();
-        if (card.getBalance() < amount) {
+        if (currentCard.getBalance() < amount) {
             System.out.println("Not enough money!");
             return;
         }
-        int result = crudRepository.transferAmount(card, other, amount);
+        int result = cardRepository.transferAmount(currentCard, other, amount);
         if (result == amount) {
             System.out.println("Success!");
         } else {
@@ -94,11 +104,21 @@ public class Menu {
         }
     }
 
-    public void closeAccount(Card card) {
-        crudRepository.closeAccount(card);
+    public void closeAccount() {
+        cardRepository.closeAccount(currentCard);
+        System.out.println("The account has been closed!");
     }
 
     public void exit() {
         System.exit(0);
+    }
+
+    public void showMenu() {
+        System.out.println(isUserLoggedIn() ? MENU_LOGGED_IN : MENU_LOGGED_OUT);
+    }
+
+    public void logOut() {
+        currentCard = null;
+        System.out.println("\nYou have successfully logged out!");
     }
 }

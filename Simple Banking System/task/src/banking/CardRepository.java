@@ -5,9 +5,9 @@ import org.sqlite.SQLiteDataSource;
 import javax.sql.DataSource;
 import java.sql.*;
 
-public class CRUDRepository {
+public class CardRepository {
     private SQLiteDataSource dataSource;
-    public CRUDRepository(String fileName) {
+    public CardRepository(String fileName) {
         String createTable = "CREATE TABLE IF NOT EXISTS card (\n"
                 + "	id INTEGER NOT NULL PRIMARY KEY,\n"
                 + "	number TEXT UNIQUE,\n"
@@ -54,11 +54,12 @@ public class CRUDRepository {
 
     public Card getCardByNumber(String cardNumber) {
         String sql = "SELECT id, pin, balance "
-                + "FROM card WHERE number = " + cardNumber;
+                + "FROM card WHERE number = ?";
         Card card = null;
         try (Connection conn = this.dataSource.getConnection();
-             Statement stmt = conn.createStatement();
-             ResultSet rs = stmt.executeQuery(sql)) {
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, cardNumber);
+            ResultSet rs = stmt.executeQuery();
             if (rs.next()) {
                 card = new Card(rs.getInt("id"), cardNumber, rs.getString("pin"), rs.getInt("balance"));
             }

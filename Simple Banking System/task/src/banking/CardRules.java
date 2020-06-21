@@ -4,7 +4,7 @@ import javax.sql.DataSource;
 import java.time.Instant;
 import java.util.Random;
 
-public class NumberDaemon {
+public class CardRules {
     public String generateCreditCardNumber() {
         Random random = new Random(Instant.now().toEpochMilli());
         long leftLimit = 100_000_000L;

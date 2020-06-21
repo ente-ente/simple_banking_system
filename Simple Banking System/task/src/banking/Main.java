@@ -1,54 +1,39 @@
 package banking;
 
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Scanner;
 
 public class Main {
-    static Card currentCard = null;
-
-    static protected boolean isLoggedIn() {
-        return currentCard != null;
-    }
-
-    private static final String MENU_LOGGED_IN = "\n1. Balance\n2. Add income\n3. Do transfer\n4. Close account\n" +
-            "5. Log out\n0. Exit";
-
-    private static final String MENU_LOGGED_OUT = "\n1. Create an account\n2. Log into account\n0. Exit";
-
     public static void main(String[] args) {
         String fileName = args[1];
-        CRUDRepository crudRepository = new CRUDRepository(fileName);
+        CardRepository cardRepository = new CardRepository(fileName);
         Scanner scanner = new Scanner(System.in);
-        Menu menu = new Menu(scanner, crudRepository);
+        BankService bankManager = new BankService(scanner, cardRepository);
 
         while (true) {
-            System.out.println(isLoggedIn() ? MENU_LOGGED_IN : MENU_LOGGED_OUT);
+            bankManager.showMenu();
             switch (scanner.next().trim()) {
                 case "1":
-                    if (isLoggedIn()) {
-                        menu.showBalance(currentCard);
+                    if (bankManager.isUserLoggedIn()) {
+                        bankManager.showBalance();
                     } else {
-                        menu.createAccount();
+                        bankManager.createAccount();
                     }
                     break;
                 case "2":
-                    if (isLoggedIn()) {
-                        menu.addIncome(currentCard);
+                    if (bankManager.isUserLoggedIn()) {
+                        bankManager.addIncome();
                     } else {
-                        currentCard = menu.logIn();
+                        bankManager.logIn();
                     }
                     break;
                 case "3":
-                    menu.doTransfer(currentCard);
+                    bankManager.doTransfer();
                     break;
                 case "4":
-                    menu.closeAccount(currentCard);
-                    System.out.println("The account has been closed!");
+                    bankManager.closeAccount();
                     break;
                 case "5":
-                    currentCard = null;
-                    System.out.println("\nYou have successfully logged out!");
+                    bankManager.logOut();
                     break;
                 case "0":
                     System.out.println("\nBye!");
